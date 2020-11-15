@@ -38,18 +38,6 @@ export AWS_SECRET_ACCESS_KEY=
 
 ![ssh.png](img/ssh.png)
 
-Edit your SSH configuration file named `config` in your local `~/.ssh` directory. Add the following lines to the file, where the value for User is the SSH Key ID.
-
-```bash
-Host git-codecommit.*.amazonaws.com
-User Your-IAM-SSH-Key-ID-Here
-IdentityFile ~/.ssh/Your-Private-Key-File-Name-Here
-```
-
-Once you have saved the file, make sure it has the right permissions by running the following command in the `~/.ssh` directory.
-
-`chmod 600 config`
-
 - `Python` library for AWS: [boto3](https://pypi.org/project/boto3/). It's used to `deregister` the `ECS Task Definitions` due to issues with `Ansible` module here we execute a `python` script to perform this action.
 
 ## Creation
