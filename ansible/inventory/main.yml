@@ -1,0 +1,9 @@
+all:
+  vars:
+    region: us-west-2
+    vpc: vpc-e1733599
+    subnet: subnet-a67edcfb
+    repo_name: python-sample-app
+    role_arn: arn:aws:iam::933799340704:role
+    sg_name: fargate-security-group
+    image_name: 933799340704.dkr.ecr.us-west-2.amazonaws.com/python-sample-app:latest

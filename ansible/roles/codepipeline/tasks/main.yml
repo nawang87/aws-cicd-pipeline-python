@@ -1,0 +1,143 @@
+---
+
+- name: Create a service role for CodePipeline
+  iam_role:
+    name: "AWSCodePipelineServiceRole-{{ region }}-{{ repo_name }}"
+    description: Service Role for AWS CodePipeline
+    assume_role_policy_document: "{{ lookup('file','policy.json') }}"
+  register: codepipeline_service_role
+  tags: create_fargate
+
+- name: Create Policy used in trust relationship with CodePipeline
+  iam_policy:
+    iam_type: role
+    iam_name: "AWSCodePipelineServiceRole-{{ region }}-{{ repo_name }}"
+    policy_name: "AWSCodePipelineServiceRole-{{ region }}-{{ repo_name }}"
+    state: present
+    policy_json: " {{ lookup( 'file', 'AWSCodePipelineTrustPolicy.json') }} "
+  tags: create_fargate
+
+- name: wait 60 seconds for policy creation
+  wait_for:
+    timeout: 60
+  when: codepipeline_service_role is changed
+  tags: create_fargate
+
+- name: Create pipeline for continuous deployment
+  aws_codepipeline:
+    name: "{{ repo_name }}-pipeline"
+    role_arn: "{{ codepipeline_service_role.iam_role.arn }}"
+    artifact_store:
+      type: S3
+      location: codepipeline-us-west-2-828151227159
+    stages:
+      - name: Get_source
+        actions:
+          - 
+            name: CodeCommit
+            actionTypeId:
+              category: Source 
+              owner: AWS
+              provider: CodeCommit
+              version: '1'
+            configuration:
+              RepositoryName: "{{ repo_name }}" 
+              BranchName: master
+            outputArtifacts: 
+              - { name: SourceArtifact }
+            runOrder: 1
+      - name: Build
+        actions:
+          -
+            name: CodeBuild
+            actionTypeId:
+              category: Build
+              owner: AWS
+              provider: CodeBuild
+              version: '1'
+            inputArtifacts:
+              - { name: SourceArtifact }
+            outputArtifacts:
+              - { name: BuildArtifact }
+            configuration:
+              # A project with that name needs to be setup on AWS CodeBuild already (use code_build module).
+              ProjectName: "{{ repo_name }}-BuildProject"
+            runOrder: 1
+      - name: Deploy
+        actions:
+          -
+            name: ECS_deploy
+            actionTypeId:
+              category: Deploy
+              owner: AWS
+              provider: ECS
+              version: '1'
+            inputArtifacts:
+              - { name: BuildArtifact }
+            configuration:
+              # an ECS cluster with that name needs to be setup on AWS ECS already (use ecs_cluster and ecs_service module)
+              ClusterName: "{{ ecs_cluster_creation.cluster.clusterName }}"
+              ServiceName: "service-{{ repo_name }}"
+              FileName: imagedefinitions.json
+  tags: create_fargate
+
+# Destroy CodePipeline
+
+- name: Destroy pipeline for continuous deployment
+  aws_codepipeline:
+    name: "{{ repo_name }}-pipeline"
+    state: absent
+    role_arn: "{{ role_arn }}/AWSCodePipelineServiceRole-{{ region }}-{{ repo_name }}"
+    artifact_store:
+      type: S3
+      location: codepipeline-us-west-2-828151227159
+    stages:
+      - name: Get_source
+        actions:
+          - 
+            name: CodeCommit
+            actionTypeId:
+              category: Source 
+              owner: AWS
+              provider: CodeCommit
+              version: '1'
+            configuration:
+              RepositoryName: "{{ repo_name }}" 
+              BranchName: master
+            outputArtifacts: 
+              - { name: SourceArtifact }
+            runOrder: 1
+      - name: Build
+        actions:
+          -
+            name: CodeBuild
+            actionTypeId:
+              category: Build
+              owner: AWS
+              provider: CodeBuild
+              version: '1'
+            inputArtifacts:
+              - { name: SourceArtifact }
+            outputArtifacts:
+              - { name: BuildArtifact }
+            configuration:
+              # A project with that name needs to be setup on AWS CodeBuild already (use code_build module).
+              ProjectName: "{{ repo_name }}-BuildProject"
+            runOrder: 1
+  tags: destroy_fargate
+
+- name: Destroy Policy used in trust relationship with CodePipeline
+  iam_policy:
+    iam_type: role
+    iam_name: "AWSCodePipelineServiceRole-{{ region }}-{{ repo_name }}"
+    policy_name: "AWSCodePipelineServiceRole-{{ region }}-{{ repo_name }}"
+    state: absent
+  ignore_errors: true
+  tags: destroy_fargate
+
+- name: Destroy service role for CodePipeline
+  iam_role:
+    name: "AWSCodePipelineServiceRole-{{ region }}-{{ repo_name }}"
+    state: absent
+  ignore_errors: true
+  tags: destroy_fargate

@@ -1,0 +1,20 @@
+{
+    "containerDefinitions": [
+        {
+            "name": "python-sample-app",
+            "image": "933799340704.dkr.ecr.us-west-2.amazonaws.com/python-sample-app:latest",
+            "portMappings": [
+                {
+                    "containerPort": 8080
+                }
+            ],
+            "essential": true
+        }
+    ],
+    "family": "python-sample-app",
+    "networkMode": "awsvpc",
+    "cpu": "512",
+    "memory": "1024",
+    "executionRoleArn": "arn:aws:iam::933799340704:role/ecsTaskExecutionRole",
+    "requiresCompatibilities": [ "FARGATE" ]
+}

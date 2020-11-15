@@ -1,0 +1,92 @@
+---
+
+- name: Create a service role for CodeBuild
+  iam_role:
+    name: "{{ repo_name }}-build"
+    description: Service Role for AWS CodeBuild
+    assume_role_policy_document: "{{ lookup('file','policy.json') }}"
+    managed_policy:
+      - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+  tags: create_fargate
+  register: codebuild_service_role
+
+- name: Create Policy template
+  template:
+    src: templates/codebuild_base_policy.json.j2
+    dest: roles/codebuild/files/codebuild_base_policy.json
+  tags: create_fargate
+
+# Create a Policy used in trust relationship with CodeBuild
+- name: Create Policy used in trust relationship with CodeBuild
+  iam_policy:
+    iam_type: role
+    iam_name: "{{ repo_name }}-build"
+    policy_name: "CodeBuildBasePolicy-{{ repo_name }}-{{ region }}"
+    state: present
+    policy_json: " {{ lookup( 'file', 'codebuild_base_policy.json') }} "
+  tags: create_fargate
+
+- name: wait 60 seconds for policy creation
+  wait_for:
+    timeout: 60
+  when: codebuild_service_role is changed
+  tags: create_fargate
+
+- name: Create CodeBuild project
+  aws_codebuild:
+    name: "{{ repo_name }}-BuildProject"
+    description: Build docker image for python
+    service_role: "{{ codebuild_service_role.iam_role.arn }}"
+    source:
+        # Possible values: BITBUCKET, CODECOMMIT, CODEPIPELINE, GITHUB, S3
+        type: CODEPIPELINE
+        buildspec: ''
+    environment:
+        computeType: BUILD_GENERAL1_SMALL
+        privilegedMode: True
+        image: "aws/codebuild/standard:4.0"
+        type: LINUX_CONTAINER
+    artifacts:
+        type: CODEPIPELINE
+  tags: create_fargate
+
+# Destroy CodeBuild project
+
+- name: Destroy CodeBuild project
+  aws_codebuild:
+    name: "{{ repo_name }}-BuildProject"
+    state: absent
+    source:
+        # Possible values: BITBUCKET, CODECOMMIT, CODEPIPELINE, GITHUB, S3
+        type: CODEPIPELINE
+        buildspec: ''
+    environment:
+        computeType: BUILD_GENERAL1_SMALL
+        privilegedMode: True
+        image: "aws/codebuild/standard:4.0"
+        type: LINUX_CONTAINER
+    artifacts:
+        type: CODEPIPELINE
+  tags: destroy_fargate
+
+- name: Destroy Policy used in trust relationship with CodeBuild
+  iam_policy:
+    iam_type: role
+    iam_name: "{{ repo_name }}-build"
+    policy_name: "CodeBuildBasePolicy-{{ repo_name }}-{{ region }}"
+    state: absent
+  ignore_errors: true
+  tags: destroy_fargate
+
+- name: Destroy service role for CodeBuild
+  iam_role:
+    name: "{{ repo_name }}-build"
+    state: absent
+  ignore_errors: true
+  tags: destroy_fargate
+
+- name: Destroy CloudWatch Log Group
+  community.aws.cloudwatchlogs_log_group:
+    state: absent
+    log_group_name: "/aws/codebuild/{{ repo_name }}-BuildProject"
+  tags: destroy_fargate

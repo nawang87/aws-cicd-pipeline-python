@@ -1,0 +1,100 @@
+---	      
+
+- name: Create a service role for ECS Task Execution
+  iam_role:
+    name: "ecsTaskExecutionRole"
+    description: Service Role for AWS CodeBuild
+    assume_role_policy_document: "{{ lookup('file','policy.json') }}"
+    managed_policy:
+      - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  register: ecs_task_service_role
+  tags: create_fargate
+
+- name: Create security group for port 8080
+  amazon.aws.ec2_group:
+    name: "{{ sg_name }}"
+    description: sg for ECS Fargate
+    vpc_id: "{{ vpc }}"
+    region: "{{ region }}"
+    rules:
+      - proto: tcp
+        ports:
+        - 8080
+        cidr_ip: 0.0.0.0/0
+        rule_desc: allow all on port 8080
+  register: ecs_security_group
+  tags: create_fargate
+
+- name: Create Task Definition template
+  template:
+    src: templates/task_definition.json.j2
+    dest: roles/fargate/files/task_definition.json
+  tags: create_fargate
+
+- name: Register ECS Task Definition
+  command: "aws ecs register-task-definition --cli-input-json file://roles/fargate/files/task_definition.json"
+  register: ecs_task_creation
+  tags: create_fargate
+
+- name: Cluster creation
+  community.aws.ecs_cluster:
+    name: "cluster-{{ repo_name }}"
+    state: present
+    region: "{{ region }}"
+  register: ecs_cluster_creation
+  tags: create_fargate
+
+- name: Create ECS service
+  community.aws.ecs_service:
+    state: present
+    name: "service-{{ repo_name }}"
+    cluster: "cluster-{{ repo_name }}"
+    task_definition: "{{ repo_name }}"
+    desired_count: 1
+    launch_type: FARGATE
+    network_configuration:
+      subnets:
+      - "{{ subnet }}"
+      security_groups:
+      - "{{ ecs_security_group.group_id }}"
+      assign_public_ip: yes
+  register: ecs_service_creation
+  tags: create_fargate
+
+# Destroy ECS resources
+
+- name: Stop ECS service
+  community.aws.ecs_service:
+    state: present
+    name: "service-{{ repo_name }}"
+    cluster: "cluster-{{ repo_name }}"
+    task_definition: "{{ repo_name }}"
+    desired_count: 0
+  ignore_errors: true
+  tags: destroy_fargate
+
+- name: Service destroy
+  community.aws.ecs_service:
+    name: "service-{{ repo_name }}"
+    state: absent
+    cluster: "cluster-{{ repo_name }}"
+  tags: destroy_fargate
+
+- name: Cluster destroy
+  community.aws.ecs_cluster:
+    name: "cluster-{{ repo_name }}"
+    state: absent
+    region: "{{ region }}"
+  tags: destroy_fargate
+
+- name: Destroy service role for ECS
+  iam_role:
+    name: "ecsTaskExecutionRole"
+    state: absent
+  ignore_errors: true
+  tags: destroy_fargate
+
+- name: Deregister Task Definitions
+  shell: "/usr/bin/python3 roles/fargate/files/deregister-tasks.py"
+  tags: destroy_fargate
+  ignore_errors: true

@@ -1,0 +1,24 @@
+---
+# Create new repository
+
+- name: Create new artifact repository
+  ecs_ecr: 
+    name: "{{ repo_name }}"
+    region: "{{ region }}"
+  register: create_art_repo
+  tags: create_fargate
+
+# Destroy the repository
+
+- name: Delete images from artifact repository
+  command: "aws ecr delete-repository --repository-name {{ repo_name }} --force"
+  ignore_errors: true
+  tags: destroy_fargate 
+
+- name: Destroy the artifact repository
+  ecs_ecr: 
+    name: "{{ repo_name }}"
+    region: "{{ region }}"
+    state: absent
+  register: destroy_art_repo
+  tags: destroy_fargate

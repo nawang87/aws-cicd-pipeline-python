@@ -1,0 +1,21 @@
+---
+# Create a new repository
+
+- name: Create Git repository
+  aws_codecommit:
+    name: "{{ repo_name }}"
+    state: present
+    region: "{{ region }}"
+  register: create_repository
+  tags: create_fargate
+
+
+# Delete the repository
+
+- name: Destroy Git repository
+  aws_codecommit:
+    name: "{{ repo_name }}"
+    state: absent
+    region: "{{ region }}"
+  register: destroy_repository
+  tags: destroy_fargate

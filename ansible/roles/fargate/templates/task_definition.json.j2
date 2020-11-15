@@ -1,0 +1,20 @@
+{
+    "containerDefinitions": [
+        {
+            "name": "{{ repo_name }}",
+            "image": "{{ image_name }}",
+            "portMappings": [
+                {
+                    "containerPort": 8080
+                }
+            ],
+            "essential": true
+        }
+    ],
+    "family": "{{ repo_name }}",
+    "networkMode": "awsvpc",
+    "cpu": "512",
+    "memory": "1024",
+    "executionRoleArn": "{{ ecs_task_service_role.iam_role.arn }}",
+    "requiresCompatibilities": [ "FARGATE" ]
+}

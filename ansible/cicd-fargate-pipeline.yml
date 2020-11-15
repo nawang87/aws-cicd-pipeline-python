@@ -1,0 +1,11 @@
+---
+- name: create fargate pipeline
+  hosts: localhost
+  gather_facts: false
+   
+  roles:
+    - codecommit
+    - containerregistry
+    - codebuild
+    - fargate
+    - codepipeline
