@@ -26,6 +26,8 @@ Create a `CI/CD` pipeline serverless architecture with `AWS` managed services to
 
 ## Requirements
 
+- This scripts were testes on `MacOS` with `Ansible` 2.10 and `Python 3.8`
+
 - `AWS CLI` installed: https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html
 
 - Export `AWS ACCESS KEY` and `AWS SECRET KEY` as environment variables:
