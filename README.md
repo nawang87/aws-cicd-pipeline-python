@@ -5,6 +5,7 @@
 - [Objective](#objective)
 - [Diagram](#diagram)
 - [Requirements](#requirements)
+- [Caveats](#caveats)
 - [Creation](#creation)
   * [Resources provisioned](#resources-provisioned)
   * [PoC](#poc)
@@ -38,7 +39,11 @@ export AWS_SECRET_ACCESS_KEY=
 
 ![ssh.png](img/ssh.png)
 
-- `Python` library for AWS: [boto3](https://pypi.org/project/boto3/). It's used to `deregister` the `ECS Task Definitions` due to issues with `Ansible` module here we execute a `python` script to perform this action.
+- `Python` library for AWS: [boto3](https://pypi.org/project/boto3/). 
+
+## Caveats
+
+Due to issues with Ansible module `ecs_taskdefiniton` I'm using the `AWS CLI` command to `register` the task definiton and a `python script` to deregister all task definitions in `roles/fargate/tasks/main.yml`.
 
 ## Creation
 
